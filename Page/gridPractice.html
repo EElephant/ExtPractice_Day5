@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>Grid</title>
+    <link rel="stylesHeet" type="text/css" href="./resources/css/ext-all.css" />
+    <script type="text/javascript" src="../adapter/ext/ext-base.js"></script>
+    <script type="text/javascript" src="../js/ext-all.js"></script>
+    <script type="text/javascript" src="../js/PagingMemoryProxy.js"></script>
+    <script>
+        Ext.onReady(function () {
+
+            var selectionsIndex = []
+            var pageSize = 4
+
+            var data = [
+                [1, '张三', 'class1', 'male', '1999-09-19', 'male'],
+                [2, '李四', 'class2', 'female', '1999-02-09', 'female'],
+                [3, '王五', 'class3', 'male', '2000-01-01', 'male'],
+                [4, '迪迦', 'class1', 'male', '1999-09-19', 'male'],
+                [5, '雷欧', 'class1', 'female', '1999-02-09', 'female'],
+                [6, '奥迪', 'class1', 'male', '2000-01-01', 'male'],
+                [7, 'XXX', 'class3', 'male', '1999-09-19', 'male'],
+                [8, 'XXX', 'class3', 'female', '1999-02-09', 'female'],
+                [9, 'XXX', 'class1', 'male', '2000-01-01', 'male']
+            ]
+
+            var reader = Ext.data.Record.create([
+                { name: 'id', type: 'number' },
+                { name: 'name', type: 'string' },
+                { name: 'className', type: 'string' },
+                { name: 'sex', type: 'string' },
+                { name: 'birthday', type: 'date' },
+                { name: 'avatar', type: 'string' },
+            ])
+
+            var sm = new Ext.grid.CheckboxSelectionModel({
+                listeners: {
+                    'rowselect': function (selectionModel, rowIndex, row) {
+                        selectionsIndex.push(rowIndex)
+                    },
+                    'rowdeselect': function (selectionModel, rowIndex, row) {
+                        selectionsIndex = selectionsIndex.filter(val => val !== rowIndex)
+                    }
+                }
+            })
+
+            var cm = new Ext.grid.ColumnModel([
+                new Ext.grid.RowNumberer(),
+                sm,
+                {
+                    header: '学号', dataIndex: 'id', editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
+                },
+                {
+                    header: '姓名', dataIndex: 'name', editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
+                },
+                {
+                    header: '班级', dataIndex: 'className', editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
+                },
+                {
+                    header: '性别', dataIndex: 'sex', renderer: function (val) {
+                        return (val === 'male') ? '男' : '女'
+                    }, editor: new Ext.grid.GridEditor(
+                        new Ext.form.TextField({
+                            allowBlank: false
+                        })
+                    )
+                },
+                {
+                    header: '生日', dataIndex: 'birthday',
+                    renderer: Ext.util.Format.dateRenderer('Y-m-d'),
+                    editor: new Ext.grid.GridEditor(
+                        new Ext.form.DateField()
+                    )
+                },
+                {
+                    header: '头像', dataIndex: 'avatar', renderer: function (val) {
+                        return (val === 'male') ? '<img src="../img/male.svg" width="30%"/>' : '<img src="../img/female.svg" width="30%" />'
+                    }
+                }
+            ])
+
+            var toolBar = new Ext.Toolbar({
+                items: [
+                    {
+                        text: 'Add',
+                        handler: function () {
+                            var newRecord = new reader({
+                                id: '',
+                                name: '',
+                                className: '',
+                                sex: '',
+                                birthday: '',
+                                avatar: ''
+                            })
+                            var insertRowIndex = 0
+                            if (sm.hasSelection()) {
+                                insertRowIndex = Math.min.apply(null, selectionsIndex);
+                            }
+                            grid.stopEditing()
+                            store.insert(insertRowIndex, newRecord)
+                            grid.startEditing(insertRowIndex, 0)
+                        }
+                    },
+                    {
+                        text: 'delete',
+                        handler: function () {
+                            if (sm.hasSelection()) {
+                                Ext.Msg.confirm('提示', '确定删除所选数据吗？', function (text) {
+                                    if (text === 'yes') {
+                                        store.remove(sm.getSelections())
+                                        grid.getView().refresh();
+                                    }
+                                })
+                            } else {
+                                Ext.Msg.alert('提示', '请选择要删除的数据')
+                            }
+                        }
+                    }
+                ]
+            })
+
+            var contextMenu = new Ext.menu.Menu({
+                items: [
+                    {
+                        text: '上移',
+                        handler: function () {
+                            if (sm.getSelections().length > 1 || !sm.hasSelection()) {
+                                Ext.Msg.alert('提示', '请选择一行数据')
+                            } else {
+                                var moveRow = sm.getSelected()
+                                var index = store.indexOf(moveRow);
+                                if (index > 0) {
+                                    grid.store.insert(index - 1, moveRow);
+                                    grid.getView().refresh();
+                                } else {
+                                    Ext.Msg.alert('提示', '这已经是第一行数据')
+                                }
+                            }
+                        }
+                    },
+                    {
+                        text: '下移',
+                        handler: function () {
+                            if (sm.getSelections().length > 1 || !sm.hasSelection()) {
+                                Ext.Msg.alert('提示', '请选择一行数据')
+                            } else {
+                                var moveRow = sm.getSelected()
+                                var index = store.indexOf(moveRow);
+                                if (index < pageSize - 1) {
+                                    grid.store.insert(index + 1, moveRow);
+                                    grid.getView().refresh();
+                                } else {
+                                    Ext.Msg.alert('提示', '这已经是本页最后一行数据')
+                                }
+                            }
+                        }
+                    },
+                    {
+                        text: '置顶',
+                        handler: function () {
+                            if (sm.getSelections().length > 1 || !sm.hasSelection()) {
+                                Ext.Msg.alert('提示', '请选择一行数据')
+                            } else {
+                                var moveRow = sm.getSelected()
+                                grid.store.insert(0, moveRow);
+                                grid.getView().refresh();
+                            }
+                        }
+                    },
+                    {
+                        text: '末位',
+                        handler: function () {
+                            if (sm.getSelections().length > 1 || !sm.hasSelection()) {
+                                Ext.Msg.alert('提示', '请选择一行数据')
+                            } else {
+                                var moveRow = sm.getSelected()
+                                grid.store.insert(pageSize - 1, moveRow);
+                                grid.getView().refresh();
+                            }
+                        }
+                    }
+                ]
+            })
+
+            var doc = Ext.getDoc();
+            Ext.get(doc).on('contextmenu', e => {
+                e.preventDefault();
+                contextMenu.showAt(e.getXY());
+            });
+
+            var store = new Ext.data.GroupingStore({
+                proxy: new Ext.data.PagingMemoryProxy(data),
+                reader: new Ext.data.ArrayReader({}, [
+                    { name: 'id' },
+                    { name: 'name' },
+                    { name: 'className' },
+                    { name: 'sex' },
+                    { name: 'birthday' },
+                    { name: 'avatar' }
+                ]),
+                groupField: 'className',
+                sortInfo: {
+                    field: 'name',
+                    direction: 'ASC'
+                }
+            })
+
+            store.load()
+
+            var pagingTb = new Ext.PagingToolbar({
+                pageSize: pageSize,
+                store: store,
+                displayInfo: true,
+                displayMsg: '显示第{0}到第{1}条，共{2}条',
+                emptyMsg: '没有记录'
+            })
+
+            var grid = new Ext.grid.EditorGridPanel({
+                renderTo: document.body,
+                width: 800,
+                height: 400,
+                store: store,
+                cm: cm,
+                sm: sm,
+                tbar: toolBar,
+                bbar: pagingTb,
+                view: new Ext.grid.GroupingView()
+            })
+
+            store.load({ params: { start: 0, limit: pageSize } })
+        })
+    </script>
+</head>
+
+<body>
+</body>
+
+</html>
